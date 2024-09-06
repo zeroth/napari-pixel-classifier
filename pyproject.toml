@@ -29,6 +29,10 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
+    "trackpy",
+    "xgboost",
+    "scikit-learn",
+    "pandas",
 ]
 
 [project.optional-dependencies]
