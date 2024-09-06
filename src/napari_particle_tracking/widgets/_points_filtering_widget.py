@@ -23,60 +23,7 @@ from qtpy.QtWidgets import (
 
 from ._base_widget import BaseWidget
 from ._napari_layers_widget import NPLayersWidget
-
-
-class FilterPlotWidget(QWidget):
-    rangeChanged = Signal(float, float)
-
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-
-        static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        # Ideally one would use self.addToolBar here, but it is slightly
-        # incompatible between PyQt6 and other bindings, so we just add the
-        # toolbar as a plain widget instead.
-        static_canvas.figure.set_layout_engine("constrained")
-        layout.addWidget(NavigationToolbar(static_canvas, self))
-        layout.addWidget(static_canvas)
-
-        self.ax = static_canvas.figure.subplots()
-        # t = np.linspace(0, 10, 501)
-
-        self.span = SpanSelector(
-            self.ax,
-            self.onselect,
-            "horizontal",
-            grab_range=2,
-            useblit=True,
-            props=dict(facecolor="blue", alpha=0.5),
-            interactive=True,
-        )
-        # layout.addWidget(span)
-        self.vmin = 0
-        self.vmax = 0
-
-    def onselect(self, vmin, vmax):
-        self.vmin = vmin
-        self.vmax = vmax
-
-        self.rangeChanged.emit(vmin, vmax)
-
-    def plot(self, x, y):
-        self.ax.clear()
-        self.ax.plot(x, y)
-        self.ax.set_xlim(np.min(x), np.max(x))
-        self.ax.set_ylim(np.min(y), np.max(y))
-        self.ax.set_xlabel("Intensity")
-        # self.ax.set_xscale("log")
-        self.ax.set_ylabel("Radius")
-        # self.ax.set_yscale("log")
-        self.ax.set_title("Intensity vs Radius")
-        self.ax.grid()
-        self.ax.figure.canvas.draw()
-        self.vmin = np.min(x)
-        self.vmax = np.max(x)
-        self.span.extents = (self.vmin, self.vmax)
+from ._filters_widget import create_histogram_filter_widget
 
 
 class PointsInfoWidget(QWidget):
@@ -104,18 +51,23 @@ class PointsFilteringWidget(BaseWidget):
         super().__init__(viewer, parent)
         self.setLayout(QVBoxLayout())
         self._nplayers_widget: NPLayersWidget = nplayers_widget
-        self._nplayers_widget.layerAdded.connect(self.add_graph)
+        def _layer_added(name:str, layer: napari.layers.Layer):
+            if isinstance(layer, napari.layers.Points):
+                self.add_graph()
+        self._nplayers_widget.layerAdded.connect(_layer_added)
 
         self._points_info_widget = PointsInfoWidget()
         self.layout().addWidget(self._points_info_widget)
 
-        self.filter_plot_widget = FilterPlotWidget()
+        self.filter_plot_widget = create_histogram_filter_widget(
+            xlabel="Point Diameter", ylabel="Radius", title="Object Radius Histogram")
         self.filter_plot_widget.rangeChanged.connect(self._filter_points)
         self.layout().addWidget(self.filter_plot_widget)
         self.layout().addStretch()
         self.add_graph()
 
     def _filter_points(self, vmin, vmax):
+        print(f"Filtering points with min {vmin} and max {vmax}")
         if getattr(self, "_points_layer", None) is None:
             warnings.warn(
                 "Please Initialise the tracking first. No points layer found."
@@ -123,8 +75,8 @@ class PointsFilteringWidget(BaseWidget):
             return
 
         _accepted_index = np.argwhere(
-            (self.points_properties["mean_intensity"] >= vmin)
-            & (self.points_properties["mean_intensity"] <= vmax)
+            (self.points_properties["equivalent_diameter"] >= vmin)
+            & (self.points_properties["equivalent_diameter"] <= vmax)
         )
 
         symbols = ["cross"] * self.points.shape[0]
@@ -141,6 +93,7 @@ class PointsFilteringWidget(BaseWidget):
         self._points_layer.properties = self.points_properties
 
     def add_graph(self):
+        print("Adding point graph")
         self._points_layer: napari.layers.Points = (
             self._nplayers_widget.get_selected_layers().get("Points", None)
         )
@@ -150,16 +103,18 @@ class PointsFilteringWidget(BaseWidget):
         self.points = self._points_layer.data
         self.points_properties = self._points_layer.features
         # print(self.points_properties.keys())
-        _intensity = self.points_properties.get("mean_intensity", None)
-        _radius = self.points_properties.get("radius", None)
-        if _intensity is None or _radius is None:
+
+        _diameter = self.points_properties.get("equivalent_diameter", None)
+        if _diameter is None:
             warnings.warn("Please calculate the intensity and radius first.")
             return
 
-        _zip_list = zip(_intensity, _radius)
-        _zip_list = sorted(_zip_list, key=lambda x: x[0])
-        _intensity, _radius = zip(*_zip_list)
-        self.filter_plot_widget.plot(_intensity, _radius)
+        # diameter bin size is difference between 1st two sorted elements
+        _diameter_sorted = np.sort(_diameter)
+        _diameter_sorted = np.unique(_diameter_sorted)
+        _bin_size = _diameter_sorted[1] - _diameter_sorted[0]
+
+        self.filter_plot_widget.plot(_diameter, _bin_size)
         self._points_info_widget.update_info(
-            np.min(_intensity), np.max(_intensity)
+            np.min(_diameter), np.max(_diameter)
         )

@@ -16,6 +16,7 @@ NPLayerWidget:
 from typing import Dict, List, Optional, Type
 
 import napari
+import napari.layers
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QComboBox, QFormLayout, QVBoxLayout, QWidget
 
@@ -119,8 +120,8 @@ class NPLayersWidget(BaseWidget):
             }
     """
 
-    layerAdded = Signal()
-    layerRemoved = Signal()
+    layerAdded = Signal(str, napari.layers.Layer)
+    layerRemoved = Signal(str, napari.layers.Layer)
 
     def __init__(
         self,
@@ -143,6 +144,7 @@ class NPLayersWidget(BaseWidget):
                 self.add_layer(
                     _layer_type_name,
                     _known_napari_layers_types[_layer_type_name],
+                    layer,
                 )
             else:
                 self._layers_combo[_layer_type_name]._update_layers()
@@ -164,35 +166,37 @@ class NPLayersWidget(BaseWidget):
         }
 
     def add_layer(
-        self, layer_type_name: str, np_type: Type[napari.layers.Layer]
+        self, layer_type_name: str, np_type: Type[napari.layers.Layer], layer: napari.layers.Layer
     ):
         self._layers_combo[layer_type_name] = NPLayerWidget(
             self.viewer, layer_type_name, np_type, self
         )
         self.layout().addWidget(self._layers_combo[layer_type_name])
         self._layers_combo[layer_type_name]._update_layers()
-        self.layerAdded.emit()
+        self.layerAdded.emit(layer_type_name, layer)
 
-    def remove_layer(self, layer_type_name: str):
+    def remove_layer(self, layer_type_name: str, layer: napari.layers.Layer):
         # print("remove_layer", layer_type_name)
         self.layout().removeWidget(self._layers_combo[layer_type_name])
         del self._layers_combo[layer_type_name]
-        self.layerRemoved.emit()
+        self.layerRemoved.emit(layer_type_name, layer)
 
     def _layer_added(self, event):
-        _layer_type_name = find_layer_type(event.value)
+        _layer = event.value
+        _layer_type_name = find_layer_type(_layer)
         if _layer_type_name not in self._layers_combo.keys():
             self.add_layer(
-                _layer_type_name, _known_napari_layers_types[_layer_type_name]
+                _layer_type_name, _known_napari_layers_types[_layer_type_name], _layer
             )
         else:
             self._layers_combo[_layer_type_name]._update_layers()
 
     def _layer_removed(self, event):
         # print("Layer removed", event.value.name)
-        _layer_type_name = find_layer_type(event.value)
+        _layer = event.value
+        _layer_type_name = find_layer_type(_layer)
         if _layer_type_name in self._layers_combo.keys():
             self._layers_combo[_layer_type_name]._update_layers()
             # print("Found the layer type in the dictionary", "layer count is: ", self._layers_combo[_layer_type_name].get_layer_count(), "count type ", type(self._layers_combo[_layer_type_name].get_layer_count()))
             if self._layers_combo[_layer_type_name].get_layer_count() == 0:
-                self.remove_layer(_layer_type_name)
+                self.remove_layer(_layer_type_name, _layer)

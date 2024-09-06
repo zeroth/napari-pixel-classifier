@@ -27,73 +27,12 @@ from qtpy.QtWidgets import (
 )
 
 from napari_particle_tracking.libs import histogram, track
-
+from ._filters_widget import create_histogram_filter_widget
 from ._base_widget import BaseWidget
 from ._napari_layers_widget import NPLayersWidget
 
 # create a color map for the tracks were first color is red with 10% transparency and second color is green with 100% transparency
 npcmap = Colormap(colors=["#FF000002", "#00FF00FF"], name="red-green")
-
-
-class FilterHistPlotWidget(QWidget):
-    rangeChanged = Signal(float, float)
-
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-
-        static_canvas = FigureCanvas(Figure(figsize=(3, 2)))
-        # Ideally one would use self.addToolBar here, but it is slightly
-        # incompatible between PyQt6 and other bindings, so we just add the
-        # toolbar as a plain widget instead.
-        static_canvas.figure.set_layout_engine("constrained")
-        layout.addWidget(NavigationToolbar(static_canvas, self))
-        layout.addWidget(static_canvas)
-
-        self.ax = static_canvas.figure.subplots()
-        # t = np.linspace(0, 10, 501)
-
-        self.span = SpanSelector(
-            self.ax,
-            self.onselect,
-            "horizontal",
-            grab_range=2,
-            useblit=True,
-            props={"facecolor": "blue", "alpha": 0.5},
-            interactive=True,
-        )
-        # layout.addWidget(span)
-        self.vmin = 0
-        self.vmax = 0
-
-    def onselect(self, vmin, vmax):
-        self.vmin = vmin
-        self.vmax = vmax
-
-        self.rangeChanged.emit(vmin, vmax)
-
-    def plot(self, values, bins):
-        self.ax.clear()
-
-        self.ax.hist(
-            values,
-            bins=bins,
-            edgecolor="black",
-            linewidth=0.5,
-            color="#DC267F",
-            alpha=0.5,
-        )
-
-        self.ax.set_xlabel("Length")
-        # self.ax.set_xscale("log")
-        self.ax.set_ylabel("Number of Tracks")
-        # self.ax.set_yscale("log")
-        self.ax.set_title("Track Length Histogram")
-        self.ax.grid()
-        self.ax.figure.canvas.draw()
-        self.vmin = np.min(values)
-        self.vmax = np.max(values)
-        self.span.extents = (self.vmin, self.vmax)
 
 
 class TracksInfoWidget(QWidget):
@@ -166,7 +105,7 @@ class TrackPyInitWidget(BaseWidget):
             return
         _points = _points_layer.data
         _points_properties = _points_layer.features
-        # _columns = _points_properties.keys()
+
         _columns = ["y", "x"]
         if "z" in _columns:
             _columns = ["z"] + _columns
@@ -230,7 +169,10 @@ class TrackingFilteringWidget(BaseWidget):
         super().__init__(viewer, parent)
         self.setLayout(QVBoxLayout())
         self._nplayers_widget: NPLayersWidget = nplayers_widget
-        self._nplayers_widget.layerAdded.connect(self.add_graph)
+        def _layer_added(name:str, layer: napari.layers.Layer):
+            if isinstance(layer, napari.layers.Tracks):
+                self.add_graph()
+        self._nplayers_widget.layerAdded.connect(_layer_added)
 
         self._track_py_init_widget = TrackPyInitWidget(
             viewer, self._nplayers_widget
@@ -239,7 +181,8 @@ class TrackingFilteringWidget(BaseWidget):
         self._tracks_info_widget = TracksInfoWidget()
         self.layout().addWidget(self._tracks_info_widget)
 
-        self.filter_track_lenght_widget = FilterHistPlotWidget()
+        self.filter_track_lenght_widget = create_histogram_filter_widget(
+            xlabel="Track Length", ylabel="No of Tracks", title="Track Length Histogram")
         self.filter_track_lenght_widget.rangeChanged.connect(
             self._filter_tracks_length
         )
@@ -292,6 +235,5 @@ class TrackingFilteringWidget(BaseWidget):
             self.tracks_properties.groupby("track_id").size().to_numpy()
         )
 
-        hist, bins, binsize = histogram(self.track_lengths, 1)
-        self.filter_track_lenght_widget.plot(self.track_lengths, bins)
+        self.filter_track_lenght_widget.plot(self.track_lengths, 1)
         self._tracks_info_widget.update_info(len(self.track_lengths))
