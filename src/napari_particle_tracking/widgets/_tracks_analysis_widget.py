@@ -3,6 +3,7 @@ from functools import partial
 from typing import List, Optional, Tuple
 
 import napari.layers
+from napari.utils import notifications
 import numpy as np
 
 from qtpy.QtGui import QIntValidator
@@ -17,6 +18,7 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QFileDialog
 )
 
 from napari_particle_tracking.libs import (
@@ -69,17 +71,38 @@ class TracksAnaysisWidget(QWidget):
         self.layout().addRow(self._btn_analyze)
         self._btn_analyze.clicked.connect(self._analyze)
 
+        self._btn_download = QPushButton("Download")
+        self.layout().addRow(self._btn_download)
+        self._btn_download.clicked.connect(self._download)
+
         self._plot_scroll = QScrollArea(self)
         self._plot_scroll.setWidgetResizable(True)
         self.layout().addRow(self._plot_scroll)
 
+    def _download(self):
+        # get the tracks layer
+        _tracks_layer: napari.layers.Tracks = self._napari_layers_widget.get_selected_layers().get(
+            "Tracks", None
+        )
+
+        if _tracks_layer is None:
+            warnings.warn("Please select/add a Tracks layer.")
+            return
+        
+        tracks_df = _tracks_layer.metadata["original_tracks_df"]
+
+        save_path = QFileDialog.getSaveFileName(self, "Save File", "", "CSV (*.csv)")[0]
+        if save_path:
+            tracks_df.to_csv(save_path, index=False)
+            notifications.show_info(f"Tracks saved successfully at {save_path}")
+        
+
     def _analyze(self):
         # get the tracks layer
-        _tracks_layer: napari.layers.Tracks = (
-            self._napari_layers_widget.get_selected_layers().get(
-                "Tracks", None
-            )
+        _tracks_layer: napari.layers.Tracks = self._napari_layers_widget.get_selected_layers().get(
+            "Tracks", None
         )
+
         if _tracks_layer is None:
             warnings.warn("Please select/add a Tracks layer.")
             return
