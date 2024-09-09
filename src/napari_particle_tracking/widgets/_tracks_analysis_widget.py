@@ -1,6 +1,7 @@
 import warnings
 from functools import partial
 from typing import List, Optional, Tuple
+from pathlib import Path
 
 import napari.layers
 from napari.utils import notifications
@@ -91,10 +92,23 @@ class TracksAnaysisWidget(QWidget):
         
         tracks_df = _tracks_layer.metadata["original_tracks_df"]
 
-        save_path = QFileDialog.getSaveFileName(self, "Save File", "", "CSV (*.csv)")[0]
+        save_path = QFileDialog.getExistingDirectory(self, "Save Data")
         if save_path:
-            tracks_df.to_csv(save_path, index=False)
-            notifications.show_info(f"Tracks saved successfully at {save_path}")
+            save_path = Path(save_path)
+            priject_name = _tracks_layer.name.removeprefix("Tracks_")
+            _all_tracks_path = save_path.joinpath(f"{priject_name}_all_tracks.csv")
+            tracks_df.to_csv(_all_tracks_path, index=False)
+
+            _msd_path = save_path.joinpath(f"{priject_name}_msd.csv")
+            self.tracked_msd.to_csv(_msd_path, index=False)
+
+            _msd_fit_path = save_path.joinpath(f"{priject_name}_msd_fit.csv")
+            self.tracked_msd_fit.to_csv(_msd_fit_path, index=False)
+
+            _filtered_tracks_path = save_path.joinpath(f"{priject_name}_filtered_tracks.csv")
+            self.filtered_tracks_df.to_csv(_filtered_tracks_path, index=False)
+            
+            notifications.show_info(f"Data saved successfully at {save_path}")
         
 
     def _analyze(self):
@@ -118,6 +132,7 @@ class TracksAnaysisWidget(QWidget):
         current_tracks_df = tracks_df[
             tracks_df["track_id"].isin(current_track_ids)
         ]
+        self.filtered_tracks_df = current_tracks_df
 
         # get track lengths
         track_lengths = current_tracks_df.groupby("track_id").size().to_numpy()
@@ -143,6 +158,7 @@ class TracksAnaysisWidget(QWidget):
                 "track_id", group_keys=True
             ).apply(lambda x: msd(x[["x", "y"]].to_numpy()))
 
+        self.tracked_msd = current_track_msd
         # fit the msd
         _basic_fit_partial = partial(
             basic_msd_fit,
@@ -155,6 +171,9 @@ class TracksAnaysisWidget(QWidget):
             "track_id", group_keys=True
         ).apply(lambda x: _basic_fit_partial(x.to_numpy()))
         current_track_fit = current_track_fit_df.to_numpy()
+        
+        self.tracked_msd_fit = current_track_fit_df
+
 
         _confined_tracks = current_track_fit_df[
             current_track_fit_df < 0.4
@@ -166,6 +185,7 @@ class TracksAnaysisWidget(QWidget):
             current_track_fit_df > 1.2
         ].index.to_numpy()
 
+        
         # get mean intensity for each category
         _mean_intensity_confined = (
             current_tracks_df[

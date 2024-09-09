@@ -156,15 +156,15 @@ class NPLayersWidget(BaseWidget):
         }
 
     def get_layers(self) -> Dict[str, List[napari.layers.Layer]]:
-        return {
-            dt_name: [
+        result = {}
+        for dt_name in self._layers_combo.keys():
+            result[dt_name] = [
                 layer
                 for layer in self.viewer.layers
                 if find_layer_type(layer) == dt_name
             ]
-            for dt_name in _known_napari_layers_types
-        }
-
+        return result
+    
     def add_layer(
         self, layer_type_name: str, np_type: Type[napari.layers.Layer], layer: napari.layers.Layer
     ):

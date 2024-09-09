@@ -15,7 +15,7 @@ from matplotlib.backends.backend_qtagg import (
 from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
 from napari.utils import Colormap
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Qt
 from qtpy.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
@@ -24,6 +24,7 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
+    QFrame
 )
 
 from napari_particle_tracking.libs import histogram, track
@@ -134,22 +135,22 @@ class TrackPyInitWidget(BaseWidget):
 
         _columns = ["track_id"] + _columns
         _tracks_np = _tracks[_columns].to_numpy()
-
+        _tracks["length"] = _tracks.groupby("track_id")["frame"].transform(
+            "size"
+        )
+        self._tracks = _tracks
         # add tracks to napari
         # check if tracks_layer exists
         _tracks_layer = self._napari_layers_widget.get_layers().get(
             "Tracks", None
         )
-        _tracks_layers_count = 0
-        if _tracks_layer is not None:
-            _tracks_layers_count = len(_tracks_layer)
-        _tracks_layer_name = f"Tracks_{_tracks_layers_count}_{_points_layer.name.removeprefix('Objects_')}"
-        _tracks["length"] = _tracks.groupby("track_id")["frame"].transform(
-            "size"
-        )
 
+        if _tracks_layer is not None:
+            self.viewer.layers.remove(_tracks_layer[0])
+
+        _tracks_layer_name = f"Tracks_{_points_layer.name.removeprefix('Objects_')}"
         # _tracks.to_csv(f"{_tracks_layer_name}.csv")
-        self._tracks = _tracks
+
         self.viewer.add_tracks(
             _tracks_np,
             name=_tracks_layer_name,
@@ -169,7 +170,8 @@ class TrackingFilteringWidget(BaseWidget):
         super().__init__(viewer, parent)
         self.setLayout(QVBoxLayout())
         self._nplayers_widget: NPLayersWidget = nplayers_widget
-        def _layer_added(name:str, layer: napari.layers.Layer):
+
+        def _layer_added(name: str, layer: napari.layers.Layer):
             if isinstance(layer, napari.layers.Tracks):
                 self.add_graph()
         self._nplayers_widget.layerAdded.connect(_layer_added)
@@ -178,11 +180,18 @@ class TrackingFilteringWidget(BaseWidget):
             viewer, self._nplayers_widget
         )
         self.layout().addWidget(self._track_py_init_widget)
+
+        # add horizontal line
+        _divider = QLabel()
+        _divider.setTextFormat(Qt.RichText)
+        _divider.setText("<hr><b>Filter Tracks by Length</b>")
+        self.layout().addWidget(_divider)
+
         self._tracks_info_widget = TracksInfoWidget()
         self.layout().addWidget(self._tracks_info_widget)
 
         self.filter_track_lenght_widget = create_histogram_filter_widget(
-            xlabel="Track Length", ylabel="No of Tracks", title="Track Length Histogram")
+            xlabel="Track Length", ylabel="No of Tracks", title="Track Length Histogram", color="#785EF0")
         self.filter_track_lenght_widget.rangeChanged.connect(
             self._filter_tracks_length
         )
@@ -231,9 +240,12 @@ class TrackingFilteringWidget(BaseWidget):
         ]
 
         # get track lengths
-        self.track_lengths = (
-            self.tracks_properties.groupby("track_id").size().to_numpy()
-        )
+        self.track_lengths = self.tracks_properties.groupby(
+            "track_id").size().to_numpy()
 
-        self.filter_track_lenght_widget.plot(self.track_lengths, 1)
+        self.filter_track_lenght_widget.set_values(self.track_lengths)
+        self.filter_track_lenght_widget.set_bin_size_range(
+            0, np.max(self.track_lengths) + 1)
+        self.filter_track_lenght_widget.set_bin_size(1)
+        self.filter_track_lenght_widget.plot()
         self._tracks_info_widget.update_info(len(self.track_lengths))

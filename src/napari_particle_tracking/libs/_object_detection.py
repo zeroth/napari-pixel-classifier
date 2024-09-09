@@ -86,7 +86,7 @@ def get_frame_regions_properties(
 
 
 def get_timeseries_regions_properties(
-    images: np.ndarray, masks: np.ndarray, properties: List[str] = None
+    images: np.ndarray, masks: np.ndarray, properties: List[str] = None, progress = tqdm
 ) -> pd.DataFrame:
     # get the regions properties for the entire timeseries using the get_frame_regions_properties
     """
@@ -114,7 +114,7 @@ def get_timeseries_regions_properties(
     if masks.ndim == 2:
         masks = np.expand_dims(masks, axis=0)
 
-    for i, (im, lab) in enumerate(tqdm(zip(images, masks))):
+    for i, (im, lab) in enumerate(progress(zip(images, masks))):
         _labels = measure.label(lab)
         if i == 0:
             result = get_frame_regions_properties(
@@ -139,7 +139,7 @@ class ObjectDetection:
         self.labels = labels
         self.objects = None
 
-    def detect_objects(self, properties: List[str] = None) -> pd.DataFrame:
+    def detect_objects(self, properties: List[str] = None, progress=tqdm) -> pd.DataFrame:
         """
         Get the objects in the image.
 
@@ -154,7 +154,7 @@ class ObjectDetection:
             The properties of the objects in the image.
         """
         self.objects = get_timeseries_regions_properties(
-            self.image, self.labels, properties=properties
+            self.image, self.labels, properties=properties, progress=progress
         )
         return self.objects
 
