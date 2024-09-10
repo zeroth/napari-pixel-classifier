@@ -100,13 +100,13 @@ class TracksAnaysisWidget(QWidget):
             tracks_df.to_csv(_all_tracks_path, index=False)
 
             _msd_path = save_path.joinpath(f"{priject_name}_msd.csv")
-            self.tracked_msd.to_csv(_msd_path, index=False)
+            self.tracked_msd.to_csv(_msd_path)
 
             _msd_fit_path = save_path.joinpath(f"{priject_name}_msd_fit.csv")
-            self.tracked_msd_fit.to_csv(_msd_fit_path, index=False)
+            self.tracked_msd_fit.to_csv(_msd_fit_path)
 
             _filtered_tracks_path = save_path.joinpath(f"{priject_name}_filtered_tracks.csv")
-            self.filtered_tracks_df.to_csv(_filtered_tracks_path, index=False)
+            self.filtered_tracks_df.to_csv(_filtered_tracks_path)
             
             notifications.show_info(f"Data saved successfully at {save_path}")
         
