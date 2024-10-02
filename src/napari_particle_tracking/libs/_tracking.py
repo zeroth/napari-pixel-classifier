@@ -107,6 +107,6 @@ def basic_msd_fit(
 
     init = np.array([0.001, 0.01])
     best_value, _ = curve_fit(fit_function, x, y, p0=init, maxfev=maxfev)
-    # _y = msd_fit_function(x, best_value[0], best_value[1])
+    _y = msd_fit_function(x, best_value[0], best_value[1])
 
-    return best_value[1]
+    return pd.DataFrame({"alpha": [best_value[1]]* len(y), "fit":_y})

@@ -21,6 +21,7 @@ from ._napari_layers_widget import NPLayersWidget
 from ._points_filtering_widget import PointsFilteringWidget
 from ._tracking_filtering_widget import TrackingFilteringWidget
 from ._tracks_analysis_widget import TracksAnaysisWidget
+from ._track_quick_analysis_widget import TrackQuickAnaysisWidget
 
 if TYPE_CHECKING:
     import napari
@@ -66,6 +67,17 @@ class TrackingPanelWidget(BaseWidget):
             self.viewer, self._nplayers_widget
         )
         self._step_tabs.addTab(self._tracks_analysis_widget, "Tracks Analysis")
+
+        self._track_quick_analysis_widget = TrackQuickAnaysisWidget(
+            self.viewer, self._nplayers_widget
+        )
+        self._step_tabs.addTab(
+            self._track_quick_analysis_widget, "Track Quick Analysis"
+        )
+
+        self._tracks_analysis_widget.trackSelected.connect(
+            self._track_quick_analysis_widget._analyze
+        )
 
         # next prev buttons
         self._next_prev_widget = QWidget()

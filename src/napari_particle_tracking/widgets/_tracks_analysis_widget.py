@@ -5,8 +5,11 @@ from pathlib import Path
 
 import napari.layers
 from napari.utils import notifications
+import napari.utils
+import napari.utils.events
 import numpy as np
 
+from qtpy.QtCore import Signal
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (
     QComboBox,
@@ -35,6 +38,7 @@ from ._plots import create_histogram_widget, colors
 
 
 class TracksAnaysisWidget(QWidget):
+    trackSelected = Signal(int)
     def __init__(
         self,
         viewer: "napari.viewer.Viewer",
@@ -79,6 +83,7 @@ class TracksAnaysisWidget(QWidget):
         self._plot_scroll = QScrollArea(self)
         self._plot_scroll.setWidgetResizable(True)
         self.layout().addRow(self._plot_scroll)
+        self.selected_track = None
 
     def _download(self):
         # get the tracks layer
@@ -121,6 +126,8 @@ class TracksAnaysisWidget(QWidget):
             warnings.warn("Please select/add a Tracks layer.")
             return
 
+        notifications.show_info("Analyzing track, please wait...")
+
         _intensity_filter = self._intensity_option.currentData()
         _intensity_filter_type = self._intensity_option.currentText()
 
@@ -128,11 +135,12 @@ class TracksAnaysisWidget(QWidget):
 
         tracks_df = _tracks_layer.metadata["original_tracks_df"]
         current_tracks = _tracks_layer.data
-        current_track_ids = current_tracks[:, 0]
+        current_track_ids = list(set(current_tracks[:, 0]))
         current_tracks_df = tracks_df[
             tracks_df["track_id"].isin(current_track_ids)
         ]
         self.filtered_tracks_df = current_tracks_df
+        _tracks_layer.metadata["filtered_tracks_df"] = self.filtered_tracks_df
 
         # get track lengths
         track_lengths = current_tracks_df.groupby("track_id").size().to_numpy()
@@ -159,6 +167,9 @@ class TracksAnaysisWidget(QWidget):
             ).apply(lambda x: msd(x[["x", "y"]].to_numpy()))
 
         self.tracked_msd = current_track_msd
+        # print("tracked_msd coloum: ", self.tracked_msd.to_frame().reset_index().columns)
+        _tracks_layer.metadata["tracked_msd"] = self.tracked_msd.to_frame().reset_index()
+        _tracks_layer.metadata["msd_delta"] = float(self._timedelay.value())
         # fit the msd
         _basic_fit_partial = partial(
             basic_msd_fit,
@@ -167,13 +178,16 @@ class TracksAnaysisWidget(QWidget):
             maxfev=int(self._max_try.text()),
         )
 
-        current_track_fit_df = current_track_msd.groupby(
+        current_track_fit_df_main = current_track_msd.groupby(
             "track_id", group_keys=True
         ).apply(lambda x: _basic_fit_partial(x.to_numpy()))
+
+        current_track_fit_df = current_track_fit_df_main.groupby("track_id").first()
+        current_track_fit_df = current_track_fit_df['alpha']
         current_track_fit = current_track_fit_df.to_numpy()
         
-        self.tracked_msd_fit = current_track_fit_df
-
+        self.tracked_msd_fit = current_track_fit_df_main
+        _tracks_layer.metadata["tracked_msd_fit"] = self.tracked_msd_fit.reset_index()
 
         _confined_tracks = current_track_fit_df[
             current_track_fit_df < 0.4
@@ -212,7 +226,7 @@ class TracksAnaysisWidget(QWidget):
             .to_numpy()
         )
 
-        print(f"Total Tracks: {len(track_lengths)}")
+        # print(f"Total Tracks: {len(track_lengths)}")
         # create dict to store parameters for histogram widget to be created
         _hist_params = [
             {
@@ -293,23 +307,26 @@ class TracksAnaysisWidget(QWidget):
             _plot_widget.layout().addWidget(_hist_plot_widget)
             # self._hist_plot_widgets.append(_hist_plot_widget)
 
-        # self._track_mean_intensity_directed_hitogram = HistPlotWidget(color=colors[_graph_count % len(colors)])
-        # self._track_mean_intensity_directed_hitogram.clear()
-        # self._track_mean_intensity_directed_hitogram.set_xlabel("Mean Intensity")
-        # self._track_mean_intensity_directed_hitogram.set_ylabel("Number of Tracks")
-        # self._track_mean_intensity_directed_hitogram.set_title("Track Mean Intensity Directed Histogram")
-        # self._track_mean_intensity_directed_hitogram.set_values(_mean_intensity_directed)
-        # self._track_mean_intensity_directed_hitogram.set_binsize(binsize)
-        # self._track_mean_intensity_directed_hitogram.set_infolabel(f"Toal Tracks: {len(_mean_intensity_directed)}")
-        # self._track_mean_intensity_directed_hitogram.plot()
-        # self._track_mean_intensity_directed_hitogram.setMinimumWidth(400)
-        # self._track_mean_intensity_directed_hitogram.setMinimumHeight(400)
-        # _plot_widget.layout().addWidget(self._track_mean_intensity_directed_hitogram)
-        # _graph_count += 1
-
         # add eveything to the scroll area
         swid = self._plot_scroll.widget()
         if swid is not None:
             swid.deleteLater()
 
         self._plot_scroll.setWidget(_plot_widget)
+        self.append_mouse_callback(_tracks_layer)
+        notifications.show_info("Track analysis completed.")
+
+    def append_mouse_callback(self, track_layer: napari.layers.Tracks) -> None:
+        """
+        Add a mouse callback to ``track_layer`` to draw the tree
+        when the layer is clicked.
+        """
+
+        @track_layer.mouse_double_click_callbacks.append
+        def show_track(tracks: napari.layers.Tracks, event: napari.utils.events.Event) -> None:
+            self.tracks = tracks
+
+            cursor_position = event.position
+            track_id = tracks.get_value(cursor_position, world=True)
+            if track_id is not None:
+                self.trackSelected.emit(int(track_id))
