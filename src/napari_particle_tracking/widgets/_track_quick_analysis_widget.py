@@ -79,10 +79,10 @@ class TrackQuickAnaysisWidget(QWidget):
         # filtered_tracks_df.to_csv("filtered_tracks_df.csv")
         # tracked_msd.to_csv("tracked_msd.csv")
         # tracked_msd_fit.to_csv("tracked_msd_fit.csv")
-        print("Quick analysis track_id ", track_id)
+        # print("Quick analysis track_id ", track_id)
 
         _track_msd = tracked_msd[tracked_msd["track_id"] == int(track_id)]
-        _track_msd.to_csv(f"{track_id}_track_msd.csv")
+        # _track_msd.to_csv(f"{track_id}_track_msd.csv")
         _track_msd = _track_msd['msd'].to_numpy()
 
         _tack_msd_fit = tracked_msd_fit[tracked_msd_fit["track_id"] == int(track_id)]
@@ -90,7 +90,7 @@ class TrackQuickAnaysisWidget(QWidget):
 
         _track_msd_alpha = tracked_msd_fit[tracked_msd_fit["track_id"] == int(track_id)]
         _track_msd_alpha = _track_msd_alpha['alpha'].to_numpy()[0]
-        print("track_id ", track_id, _track_msd.shape)
+        # print("track_id ", track_id, _track_msd.shape)
 
         _pos = _track[["x", "y"]].to_numpy()
         _displacement = np.sqrt(np.sum(np.diff(_pos, axis=0)**2, axis=1))

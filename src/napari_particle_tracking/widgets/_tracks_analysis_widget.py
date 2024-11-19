@@ -168,7 +168,7 @@ class TracksAnaysisWidget(QWidget):
 
         self.tracked_msd = current_track_msd
         # print("tracked_msd coloum: ", self.tracked_msd.to_frame().reset_index().columns)
-        _tracks_layer.metadata["tracked_msd"] = self.tracked_msd.to_frame().reset_index()
+        _tracks_layer.metadata["tracked_msd"] = self.tracked_msd.reset_index()
         _tracks_layer.metadata["msd_delta"] = float(self._timedelay.value())
         # fit the msd
         _basic_fit_partial = partial(

@@ -66,6 +66,8 @@ def histogram(data, binsize=5):
 
 from scipy.optimize import curve_fit
 
+# add straight line fit and r2 calculation
+# https://github.com/elilouise/Scientific-Computational-Records/blob/main/Fitting%20data%20to%20polynomials.ipynb
 
 def msd(pos, limit=25):
     pos_columns = ["x", "y"]
@@ -98,6 +100,8 @@ def msd(pos, limit=25):
 def msd_fit_function(delta, d, alfa):
     return (4 * d) * np.power(delta, alfa)
 
+def line(x, m, c):
+    return m * x + c
 
 def basic_msd_fit(
     msd_y, delta=3.8, fit_function=msd_fit_function, maxfev=1000000
@@ -109,4 +113,4 @@ def basic_msd_fit(
     best_value, _ = curve_fit(fit_function, x, y, p0=init, maxfev=maxfev)
     _y = msd_fit_function(x, best_value[0], best_value[1])
 
-    return pd.DataFrame({"alpha": [best_value[1]]* len(y), "fit":_y})
+    return pd.DataFrame({"alpha": [best_value[1]]* len(y), "fit":_y, "diffusion_coefficient":best_value[0]}, index=x)
