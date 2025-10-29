@@ -1,7 +1,7 @@
 [project]
-name = "napari-particle-tracking"
+name = "napari-pixel-classifier"
 dynamic = ["version"]
-description = "A plugin for Particle tracking using xgboost based pixel classifier and trackpy"
+description = "A plugin for Pixel classifier using xgboost"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -46,7 +46,7 @@ testing = [
 ]
 
 [project.entry-points."napari.manifest"]
-napari-particle-tracking = "napari_particle_tracking:napari.yaml"
+napari-pixel-classifier = "napari_pixel_classifier:napari.yaml"
 
 
 
@@ -65,7 +65,7 @@ where = ["src"]
 
 
 [tool.setuptools.dynamic]
-version = {attr = "napari_particle_tracking.__init__.__version__"}
+version = {attr = "napari_pixel_classifier.__init__.__version__"}
 
 [tool.black]
 line-length = 79

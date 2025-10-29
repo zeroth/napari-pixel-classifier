@@ -1,11 +1,11 @@
-# napari-particle-tracking
+# napari-pixel-classifier
 
-[![License MIT](https://img.shields.io/pypi/l/napari-particle-tracking.svg?color=green)](https://github.com/zeroth/napari-particle-tracking/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/napari-particle-tracking.svg?color=green)](https://pypi.org/project/napari-particle-tracking)
-[![Python Version](https://img.shields.io/pypi/pyversions/napari-particle-tracking.svg?color=green)](https://python.org)
-[![tests](https://github.com/zeroth/napari-particle-tracking/workflows/tests/badge.svg)](https://github.com/zeroth/napari-particle-tracking/actions)
-[![codecov](https://codecov.io/gh/zeroth/napari-particle-tracking/branch/main/graph/badge.svg)](https://codecov.io/gh/zeroth/napari-particle-tracking)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-particle-tracking)](https://napari-hub.org/plugins/napari-particle-tracking)
+[![License MIT](https://img.shields.io/pypi/l/napari-pixel-classifier.svg?color=green)](https://github.com/zeroth/napari-pixel-classifier/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/napari-pixel-classifier.svg?color=green)](https://pypi.org/project/napari-pixel-classifier)
+[![Python Version](https://img.shields.io/pypi/pyversions/napari-pixel-classifier.svg?color=green)](https://python.org)
+[![tests](https://github.com/zeroth/napari-pixel-classifier/workflows/tests/badge.svg)](https://github.com/zeroth/napari-pixel-classifier/actions)
+[![codecov](https://codecov.io/gh/zeroth/napari-pixel-classifier/branch/main/graph/badge.svg)](https://codecov.io/gh/zeroth/napari-pixel-classifier)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-pixel-classifier)](https://napari-hub.org/plugins/napari-pixel-classifier)
 
 A plugin for Particle tracking using xgboost based pixel classifier and trackpy
 
@@ -23,9 +23,9 @@ https://napari.org/stable/plugins/index.html
 
 ## Installation
 
-You can install `napari-particle-tracking` via [pip]:
+You can install `napari-pixel-classifier` via [pip]:
 
-    pip install napari-particle-tracking
+    pip install napari-pixel-classifier
 
 
 
@@ -38,7 +38,7 @@ the coverage at least stays the same before you submit a pull request.
 ## License
 
 Distributed under the terms of the [MIT] license,
-"napari-particle-tracking" is free and open source software
+"napari-pixel-classifier" is free and open source software
 
 ## Issues
 
@@ -63,7 +63,7 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 
 # remove me later
 1. `cd` into your new directory
-    cd napari-particle-tracking
+    cd napari-pixel-classifier
     # you probably want to install your new package into your env
     pip install -e .
 
