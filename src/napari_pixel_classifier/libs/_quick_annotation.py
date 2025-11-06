@@ -68,6 +68,7 @@ def quick_segment_2d(
         overlap=overlap,
     )
     label = _draw_points(label, blobs_log, fill_value=2, outline_value=1)
+    label[label == 0] = 1  # set background to 1
     return label
 
 
